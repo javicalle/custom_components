@@ -73,7 +73,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 
-def devices_from_config(domain_config, hass=None):
+def devices_from_config(hass, domain_config):
     """Parse configuration and add RFLink cover devices."""
     devices = []
     for device_id, config in domain_config[CONF_DEVICES].items():
@@ -84,7 +84,7 @@ def devices_from_config(domain_config, hass=None):
         travel_time_up = config.get(CONF_TRAVELLING_TIME_UP)
         del config[CONF_TRAVELLING_TIME_UP]
         device_config = dict(domain_config[CONF_DEVICE_DEFAULTS], **config)
-        device = RTSRflinkCover(device_id, hass, rts_my_position,
+        device = RTSRflinkCover(hass, device_id, rts_my_position,
                 travel_time_down, travel_time_up, **device_config)
         devices.append(device)
 
@@ -110,7 +110,7 @@ def devices_from_config(domain_config, hass=None):
 async def async_setup_platform(hass, config, async_add_entities,
                                discovery_info=None):
     """Set up the RFLink cover platform."""
-    async_add_entities(devices_from_config(config, hass))
+    async_add_entities(devices_from_config(hass, config))
 
 
 class RTSRflinkCover(RflinkCommand, CoverDevice):
@@ -132,7 +132,7 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
 
         super().__init__(device_id, hass, **device_config)
 
-        self.travelcalculator = TravelCalculator(
+        self.tc = TravelCalculator(
             self._travel_time_down,
             self._travel_time_up)
 
@@ -143,11 +143,11 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
         command = event['command']
         if command in ['on', 'allon', 'up']:
             self._require_stop_cover = False
-            self.travelcalculator.start_travel_up()
+            self.tc.start_travel_up()
             self.start_auto_updater()
         elif command in ['off', 'alloff', 'down']:
             self._require_stop_cover = False
-            self.travelcalculator.start_travel_down()
+            self.tc.start_travel_down()
             self.start_auto_updater()
         elif command in ['stop']:
             _LOGGER.debug('_handle_even :: stop')
@@ -156,13 +156,13 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
 
     def _handle_my_button(self):
         """Handle the MY button press"""
-        if self.travelcalculator.is_traveling():
+        if self.tc.is_traveling():
             _LOGGER.debug('_handle_my_button :: button stops cover')
-            self.travelcalculator.stop()
+            self.tc.stop()
             self.stop_auto_updater()
         elif self._rts_my_position is not None:
             _LOGGER.debug('_handle_my_button :: button sends to MY')
-            self.travelcalculator.start_travel(self._rts_my_position)
+            self.tc.start_travel(self._rts_my_position)
             self.start_auto_updater()
 
     @property
@@ -179,9 +179,9 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
             attr[CONF_TRAVELLING_TIME_DOWN] = self._travel_time_down
         if self._travel_time_up is not None:
             attr[CONF_TRAVELLING_TIME_UP] = self._travel_time_up
-        if self.travelcalculator is not None:
-            attr['travel_to_position'] = self.travelcalculator.travel_to_position 
-            attr['tc_current_position'] = self.travelcalculator.current_position()
+        if self.tc is not None:
+            attr['travel_to_position'] = self.tc.travel_to_position
+            attr['tc_current_position'] = self.tc.current_position()
         #     attr['position_type'] = self.travelcalculator.position_type
         return attr
 
@@ -200,26 +200,26 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
     @property
     def current_cover_position(self):
         """Return the current position of the cover."""
-        return self.travelcalculator.current_position()
+        return self.tc.current_position()
 
     @property
     def is_opening(self):
         """Return if the cover is opening or not."""
         from xknx.devices import TravelStatus
-        return self.travelcalculator.is_traveling() and \
-            self.travelcalculator.travel_direction == TravelStatus.DIRECTION_UP
+        return self.tc.is_traveling() and \
+               self.tc.travel_direction == TravelStatus.DIRECTION_UP
 
     @property
     def is_closing(self):
         """Return if the cover is closing or not."""
         from xknx.devices import TravelStatus
-        return self.travelcalculator.is_traveling() and \
-            self.travelcalculator.travel_direction == TravelStatus.DIRECTION_DOWN
+        return self.tc.is_traveling() and \
+               self.tc.travel_direction == TravelStatus.DIRECTION_DOWN
 
     @property
     def is_closed(self):
         """Return if the cover is closed."""
-        return self.travelcalculator.is_closed()
+        return self.tc.is_closed()
 
     @property
     def assumed_state(self):
@@ -238,7 +238,7 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
     def async_close_cover(self, **kwargs):
         """Turn the device close."""
         _LOGGER.debug('async_close_cover')
-        self.travelcalculator.start_travel_down()
+        self.tc.start_travel_down()
         self._require_stop_cover = False
         self.start_auto_updater()
         return self._async_handle_command('close_cover')
@@ -246,7 +246,7 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
     def async_open_cover(self, **kwargs):
         """Turn the device open."""
         _LOGGER.debug('async_open_cover')
-        self.travelcalculator.start_travel_up()
+        self.tc.start_travel_up()
         self._require_stop_cover = False
         self.start_auto_updater()
         return self._async_handle_command('open_cover')
@@ -261,14 +261,14 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
     async def set_position(self, position):
         _LOGGER.debug('set_position')
         """Move cover to a designated position."""
-        current_position = self.travelcalculator.current_position()
+        current_position = self.tc.current_position()
         _LOGGER.debug('set_position :: current_position: %d, new_position: %d', current_position, position)
         command = None
         if position < current_position:
             command = 'close_cover'
         elif position > current_position:
             command = 'open_cover'
-        self.travelcalculator.start_travel(position)
+        self.tc.start_travel(position)
         _LOGGER.debug('set_position :: command %s', command)
         await self._async_handle_command(command)
         return
@@ -300,7 +300,7 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
 
     def position_reached(self):
         """Return if cover has reached its final position."""
-        return self.travelcalculator.position_reached()
+        return self.tc.position_reached()
 
     async def auto_stop_if_necessary(self):
         """Do auto stop if necessary."""
@@ -312,7 +312,7 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
             if self._require_stop_cover:
                 _LOGGER.debug('auto_stop_if_necessary :: calling stop command')
                 await self._async_handle_command('stop_cover')
-            self.travelcalculator.stop()
+            self.tc.stop()
 
         # if (
         #         self._require_stop_cover and
