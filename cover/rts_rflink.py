@@ -21,7 +21,8 @@ from homeassistant.components.cover import (
 from homeassistant.helpers.event import async_track_utc_time_change
 import homeassistant.helpers.config_validation as cv
 from homeassistant.const import CONF_NAME
-from .xknx.travelcalculator import TravelCalculator
+
+REQUIREMENTS = ['xknx==0.8.5']
 
 DEPENDENCIES = ['rflink']
 
@@ -115,9 +116,10 @@ async def async_setup_platform(hass, config, async_add_entities,
 class RTSRflinkCover(RflinkCommand, CoverDevice):
     """Rflink entity which can switch on/stop/off (eg: cover)."""
 
-    def __init__(self, device_id, hass, rts_my_position,
-                travel_time_down, travel_time_up, **device_config):
+    def __init__(self, hass, device_id, rts_my_position,
+                 travel_time_down, travel_time_up, **device_config):
         """Initialize the cover."""
+        from xknx.devices import TravelCalculator
         self.hass = hass
         self._rts_my_position = rts_my_position
         self._travel_time_down = travel_time_down
@@ -247,7 +249,7 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
 
     async def set_position(self, position):
         _LOGGER.debug('set_position')
-        """Move cover to a desginated postion."""
+        """Move cover to a designated position."""
         current_position = self.travelcalculator.current_position()
         _LOGGER.debug('set_position :: current_position: %d, new_position: %d', current_position, position)
         command = None
@@ -301,7 +303,6 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
                 await self._async_handle_command('stop_cover')
             self.travelcalculator.stop()
 
-            
         # if (
         #         self._require_stop_cover and
         #         self.position_reached() and
