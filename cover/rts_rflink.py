@@ -1,5 +1,5 @@
 """
-Support for RTS Cover devices over Rflink controller.
+Support for RTS Cover devices over RFLink controller.
 
 For more details about this platform, please refer to the documentation at
 https://home-assistant.io/components/cover.rflink/
@@ -74,7 +74,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 
 
 def devices_from_config(domain_config, hass=None):
-    """Parse configuration and add Rflink cover devices."""
+    """Parse configuration and add RFLink cover devices."""
     devices = []
     for device_id, config in domain_config[CONF_DEVICES].items():
         rts_my_position = config.get(CONF_MY_POSITION)
@@ -88,7 +88,7 @@ def devices_from_config(domain_config, hass=None):
                 travel_time_down, travel_time_up, **device_config)
         devices.append(device)
 
-        # Register entity (and aliases) to listen to incoming rflink events
+        # Register entity (and aliases) to listen to incoming RFLink events
         # Device id and normal aliases respond to normal and group command
         hass.data[DATA_ENTITY_LOOKUP][
             EVENT_KEY_COMMAND][device_id].append(device)
@@ -109,12 +109,12 @@ def devices_from_config(domain_config, hass=None):
 
 async def async_setup_platform(hass, config, async_add_entities,
                                discovery_info=None):
-    """Set up the Rflink cover platform."""
+    """Set up the RFLink cover platform."""
     async_add_entities(devices_from_config(config, hass))
 
 
 class RTSRflinkCover(RflinkCommand, CoverDevice):
-    """Rflink entity which can switch on/stop/off (eg: cover)."""
+    """RFLink entity which can switch on/stop/off (eg: cover)."""
 
     def __init__(self, hass, device_id, rts_my_position,
                  travel_time_down, travel_time_up, **device_config):
@@ -137,23 +137,20 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
             self._travel_time_up)
 
     def _handle_event(self, event):
-        """Adjust state if Rflink picks up a remote command for this device."""
+        """Adjust state if RFLink picks up a remote command for this device."""
         self.cancel_queued_send_commands()
 
         command = event['command']
         if command in ['on', 'allon', 'up']:
-            self._state = STATE_OPENING
             self._require_stop_cover = False
             self.travelcalculator.start_travel_up()
             self.start_auto_updater()
         elif command in ['off', 'alloff', 'down']:
-            self._state = STATE_CLOSING
             self._require_stop_cover = False
             self.travelcalculator.start_travel_down()
             self.start_auto_updater()
         elif command in ['stop']:
             _LOGGER.debug('_handle_even :: stop')
-            self._state = STATE_OPEN
             self._require_stop_cover = False
             self._handle_my_button()
 
@@ -190,20 +187,34 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
 
     @property
     def should_poll(self):
-        """No polling available in RFlink cover."""
+        """No polling available in RFLink cover."""
         return False
 
     @property
     def supported_features(self):
         """Flag supported features."""
         supported_features = SUPPORT_OPEN | SUPPORT_CLOSE | \
-                             SUPPORT_SET_POSITION | SUPPORT_STOP
+            SUPPORT_SET_POSITION | SUPPORT_STOP
         return supported_features
 
     @property
     def current_cover_position(self):
         """Return the current position of the cover."""
         return self.travelcalculator.current_position()
+
+    @property
+    def is_opening(self):
+        """Return if the cover is opening or not."""
+        from xknx.devices import TravelStatus
+        return self.travelcalculator.is_traveling() and \
+            self.travelcalculator.travel_direction == TravelStatus.DIRECTION_UP
+
+    @property
+    def is_closing(self):
+        """Return if the cover is closing or not."""
+        from xknx.devices import TravelStatus
+        return self.travelcalculator.is_traveling() and \
+            self.travelcalculator.travel_direction == TravelStatus.DIRECTION_DOWN
 
     @property
     def is_closed(self):
