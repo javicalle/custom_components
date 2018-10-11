@@ -9,10 +9,14 @@ import logging
 import voluptuous as vol
 
 from homeassistant.core import callback
-from homeassistant.const import (
+from homeassistant.const import (CONF_NAME,
     STATE_OPEN, STATE_CLOSED, STATE_OPENING, STATE_CLOSING)
 
 from homeassistant.components.rflink import (
+    CONF_ALIASES, CONF_GROUP_ALIASES, CONF_GROUP, CONF_NOGROUP_ALIASES,
+    CONF_DEVICE_DEFAULTS, CONF_DEVICES, CONF_AUTOMATIC_ADD, CONF_FIRE_EVENT,
+    CONF_IGNORE_DEVICES, CONF_RECONNECT_INTERVAL, CONF_SIGNAL_REPETITIONS,
+    CONF_WAIT_FOR_ACK,
     DATA_ENTITY_GROUP_LOOKUP, DATA_ENTITY_LOOKUP,
     DEVICE_DEFAULTS_SCHEMA, EVENT_KEY_COMMAND, RflinkCommand)
 from homeassistant.components.cover import (
@@ -20,7 +24,6 @@ from homeassistant.components.cover import (
     SUPPORT_STOP, SUPPORT_SET_POSITION, ATTR_POSITION)
 from homeassistant.helpers.event import async_track_utc_time_change
 import homeassistant.helpers.config_validation as cv
-from homeassistant.const import CONF_NAME
 
 REQUIREMENTS = ['xknx==0.8.5']
 
@@ -28,24 +31,9 @@ DEPENDENCIES = ['rflink']
 
 _LOGGER = logging.getLogger(__name__)
 
-
-CONF_ALIASES = 'aliases'
-CONF_GROUP_ALIASES = 'group_aliases'
-CONF_GROUP = 'group'
-CONF_NOGROUP_ALIASES = 'nogroup_aliases'
-CONF_DEVICE_DEFAULTS = 'device_defaults'
-CONF_DEVICES = 'devices'
-CONF_AUTOMATIC_ADD = 'automatic_add'
-CONF_FIRE_EVENT = 'fire_event'
-CONF_IGNORE_DEVICES = 'ignore_devices'
-CONF_RECONNECT_INTERVAL = 'reconnect_interval'
-CONF_SIGNAL_REPETITIONS = 'signal_repetitions'
-CONF_WAIT_FOR_ACK = 'wait_for_ack'
-
 CONF_MY_POSITION = 'rts_my_position'
 CONF_TRAVELLING_TIME_DOWN = 'travelling_time_down'
 CONF_TRAVELLING_TIME_UP = 'travelling_time_up'
-
 DEFAULT_TRAVEL_TIME = 25
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
@@ -63,7 +51,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
             vol.Optional(CONF_FIRE_EVENT, default=False): cv.boolean,
             vol.Optional(CONF_SIGNAL_REPETITIONS): vol.Coerce(int),
             vol.Optional(CONF_GROUP, default=True): cv.boolean,
-            vol.Optional(CONF_MY_POSITION):cv.positive_int,
+            vol.Optional(CONF_MY_POSITION):
+                vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
             vol.Optional(CONF_TRAVELLING_TIME_DOWN, default=DEFAULT_TRAVEL_TIME):
                 cv.positive_int,
             vol.Optional(CONF_TRAVELLING_TIME_UP, default=DEFAULT_TRAVEL_TIME):
@@ -85,7 +74,7 @@ def devices_from_config(hass, domain_config):
         del config[CONF_TRAVELLING_TIME_UP]
         device_config = dict(domain_config[CONF_DEVICE_DEFAULTS], **config)
         device = RTSRflinkCover(hass, device_id, rts_my_position,
-                travel_time_down, travel_time_up, **device_config)
+                                travel_time_down, travel_time_up, **device_config)
         devices.append(device)
 
         # Register entity (and aliases) to listen to incoming RFLink events
