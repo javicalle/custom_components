@@ -298,16 +298,10 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
         # unless device was traveling to fully open
         # or fully closed state
         if self.position_reached():
-            if self._require_stop_cover:
+            if (
+                    self._require_stop_cover and
+                    not self.tc.is_closed() and
+                    not self.tc.is_open()):
                 _LOGGER.debug('auto_stop_if_necessary :: calling stop command')
                 await self._async_handle_command('stop_cover')
             self.tc.stop()
-
-        # if (
-        #         self._require_stop_cover and
-        #         self.position_reached() and
-        #         not self.travelcalculator.is_open() and
-        #         not self.travelcalculator.is_closed()):
-        #     _LOGGER.debug('auto_stop_if_necessary :: calling stop command')
-        #     self.travelcalculator.stop()
-        #     await self._async_handle_command('stop_cover')
