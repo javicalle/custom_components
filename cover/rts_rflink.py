@@ -12,13 +12,12 @@ from homeassistant.core import callback
 from homeassistant.const import (CONF_NAME,
     STATE_OPEN, STATE_CLOSED, STATE_OPENING, STATE_CLOSING)
 
-from homeassistant.components.rflink import (
+from custom_components.rflink import (
     CONF_ALIASES, CONF_GROUP_ALIASES, CONF_GROUP, CONF_NOGROUP_ALIASES,
     CONF_DEVICE_DEFAULTS, CONF_DEVICES, CONF_AUTOMATIC_ADD, CONF_FIRE_EVENT,
-    CONF_IGNORE_DEVICES, CONF_RECONNECT_INTERVAL, CONF_SIGNAL_REPETITIONS,
-    CONF_WAIT_FOR_ACK,
-    DATA_ENTITY_GROUP_LOOKUP, DATA_ENTITY_LOOKUP,
-    DEVICE_DEFAULTS_SCHEMA, EVENT_KEY_COMMAND, RflinkCommand)
+    CONF_SIGNAL_REPETITIONS,
+    DEVICE_DEFAULTS_SCHEMA, RflinkCommand)
+	
 from homeassistant.components.cover import (
     CoverDevice, PLATFORM_SCHEMA, SUPPORT_OPEN, SUPPORT_CLOSE,
     SUPPORT_STOP, SUPPORT_SET_POSITION, ATTR_POSITION)
@@ -76,23 +75,6 @@ def devices_from_config(hass, domain_config):
         device = RTSRflinkCover(hass, device_id, rts_my_position,
                                 travel_time_down, travel_time_up, **device_config)
         devices.append(device)
-
-        # Register entity (and aliases) to listen to incoming RFLink events
-        # Device id and normal aliases respond to normal and group command
-        hass.data[DATA_ENTITY_LOOKUP][
-            EVENT_KEY_COMMAND][device_id].append(device)
-        _LOGGER.debug("cover device %s registered", device_id)
-        if config[CONF_GROUP]:
-            hass.data[DATA_ENTITY_GROUP_LOOKUP][
-                EVENT_KEY_COMMAND][device_id].append(device)
-            _LOGGER.debug("cover group %s registered", device_id)
-        for _id in config[CONF_ALIASES]:
-            hass.data[DATA_ENTITY_LOOKUP][
-                EVENT_KEY_COMMAND][_id].append(device)
-            _LOGGER.debug("cover alias %s registered", _id)
-            hass.data[DATA_ENTITY_GROUP_LOOKUP][
-                EVENT_KEY_COMMAND][_id].append(device)
-            _LOGGER.debug("cover group %s registered", _id)
     return devices
 
 
@@ -128,18 +110,18 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
     def _handle_event(self, event):
         """Adjust state if RFLink picks up a remote command for this device."""
         self.cancel_queued_send_commands()
+        _LOGGER.debug('_handle_event %s', event)
 
         command = event['command']
-        if command in ['on', 'allon', 'up']:
+        if command in ['on', 'allon', 'up', 'open']:
             self._require_stop_cover = False
             self.tc.start_travel_up()
             self.start_auto_updater()
-        elif command in ['off', 'alloff', 'down']:
+        elif command in ['off', 'alloff', 'down', 'close']:
             self._require_stop_cover = False
             self.tc.start_travel_down()
             self.start_auto_updater()
         elif command in ['stop']:
-            _LOGGER.debug('_handle_even :: stop')
             self._require_stop_cover = False
             self._handle_my_button()
 
