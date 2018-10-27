@@ -10,14 +10,14 @@ import voluptuous as vol
 
 from homeassistant.core import callback
 from homeassistant.const import (CONF_NAME,
-    STATE_OPEN, STATE_CLOSED, STATE_OPENING, STATE_CLOSING)
+                                 STATE_OPEN, STATE_CLOSED, STATE_OPENING, STATE_CLOSING)
 
 from custom_components.rflink import (
     CONF_ALIASES, CONF_GROUP_ALIASES, CONF_GROUP, CONF_NOGROUP_ALIASES,
     CONF_DEVICE_DEFAULTS, CONF_DEVICES, CONF_AUTOMATIC_ADD, CONF_FIRE_EVENT,
     CONF_SIGNAL_REPETITIONS,
     DEVICE_DEFAULTS_SCHEMA, RflinkCommand)
-	
+
 from homeassistant.components.cover import (
     CoverDevice, PLATFORM_SCHEMA, SUPPORT_OPEN, SUPPORT_CLOSE,
     SUPPORT_STOP, SUPPORT_SET_POSITION, ATTR_POSITION)
@@ -37,7 +37,7 @@ DEFAULT_TRAVEL_TIME = 25
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_DEVICE_DEFAULTS, default=DEVICE_DEFAULTS_SCHEMA({})):
-    DEVICE_DEFAULTS_SCHEMA,
+        DEVICE_DEFAULTS_SCHEMA,
     vol.Optional(CONF_DEVICES, default={}): vol.Schema({
         cv.string: {
             vol.Optional(CONF_NAME): cv.string,
@@ -61,7 +61,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 
-def devices_from_config(hass, domain_config):
+def devices_from_config(domain_config):
     """Parse configuration and add RFLink cover devices."""
     devices = []
     for device_id, config in domain_config[CONF_DEVICES].items():
@@ -72,7 +72,7 @@ def devices_from_config(hass, domain_config):
         travel_time_up = config.get(CONF_TRAVELLING_TIME_UP)
         del config[CONF_TRAVELLING_TIME_UP]
         device_config = dict(domain_config[CONF_DEVICE_DEFAULTS], **config)
-        device = RTSRflinkCover(hass, device_id, rts_my_position,
+        device = RTSRflinkCover(device_id, rts_my_position,
                                 travel_time_down, travel_time_up, **device_config)
         devices.append(device)
     return devices
@@ -81,27 +81,26 @@ def devices_from_config(hass, domain_config):
 async def async_setup_platform(hass, config, async_add_entities,
                                discovery_info=None):
     """Set up the RFLink cover platform."""
-    async_add_entities(devices_from_config(hass, config))
+    async_add_entities(devices_from_config(config))
 
 
 class RTSRflinkCover(RflinkCommand, CoverDevice):
     """RFLink entity which can switch on/stop/off (eg: cover)."""
 
-    def __init__(self, hass, device_id, rts_my_position,
+    def __init__(self, device_id, rts_my_position,
                  travel_time_down, travel_time_up, **device_config):
         """Initialize the cover."""
         from xknx.devices import TravelCalculator
-        self.hass = hass
         self._rts_my_position = rts_my_position
         self._travel_time_down = travel_time_down
         self._travel_time_up = travel_time_up
         self._require_stop_cover = False
 
-#        self.async_register_callbacks()
+        #        self.async_register_callbacks()
 
         self._unsubscribe_auto_updater = None
 
-        super().__init__(device_id, hass, **device_config)
+        super().__init__(None, device_id, **device_config)
 
         self.tc = TravelCalculator(
             self._travel_time_down,
@@ -113,11 +112,11 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
         _LOGGER.debug('_handle_event %s', event)
 
         command = event['command']
-        if command in ['on', 'allon', 'up', 'open']:
+        if command in ['on', 'allon', 'up']:
             self._require_stop_cover = False
             self.tc.start_travel_up()
             self.start_auto_updater()
-        elif command in ['off', 'alloff', 'down', 'close']:
+        elif command in ['off', 'alloff', 'down']:
             self._require_stop_cover = False
             self.tc.start_travel_down()
             self.start_auto_updater()
@@ -165,7 +164,7 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
     def supported_features(self):
         """Flag supported features."""
         supported_features = SUPPORT_OPEN | SUPPORT_CLOSE | \
-            SUPPORT_SET_POSITION | SUPPORT_STOP
+                             SUPPORT_SET_POSITION | SUPPORT_STOP
         return supported_features
 
     @property
@@ -259,8 +258,7 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
         if self.position_reached():
             _LOGGER.debug('auto_updater_hook :: position_reached')
             self.stop_auto_updater()
-
-        self.hass.add_job(self.auto_stop_if_necessary())
+        self.hass.async_create_task(self.auto_stop_if_necessary())
 
     def stop_auto_updater(self):
         """Stop the autoupdater."""

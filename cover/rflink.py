@@ -9,7 +9,9 @@ import logging
 import voluptuous as vol
 
 from homeassistant.components.rflink import (
-    DEVICE_DEFAULTS_SCHEMA, RflinkCommand)
+    CONF_ALIASES, CONF_DEVICE_DEFAULTS, CONF_DEVICES, CONF_FIRE_EVENT,
+    CONF_GROUP, CONF_GROUP_ALIASES, CONF_NOGROUP_ALIASES,
+    CONF_SIGNAL_REPETITIONS, DEVICE_DEFAULTS_SCHEMA, RflinkCommand)
 from homeassistant.components.cover import (
     CoverDevice, PLATFORM_SCHEMA)
 import homeassistant.helpers.config_validation as cv
@@ -20,19 +22,6 @@ DEPENDENCIES = ['rflink']
 
 _LOGGER = logging.getLogger(__name__)
 
-
-CONF_ALIASES = 'aliases'
-CONF_GROUP_ALIASES = 'group_aliases'
-CONF_GROUP = 'group'
-CONF_NOGROUP_ALIASES = 'nogroup_aliases'
-CONF_DEVICE_DEFAULTS = 'device_defaults'
-CONF_DEVICES = 'devices'
-CONF_AUTOMATIC_ADD = 'automatic_add'
-CONF_FIRE_EVENT = 'fire_event'
-CONF_IGNORE_DEVICES = 'ignore_devices'
-CONF_RECONNECT_INTERVAL = 'reconnect_interval'
-CONF_SIGNAL_REPETITIONS = 'signal_repetitions'
-CONF_WAIT_FOR_ACK = 'wait_for_ack'
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_DEVICE_DEFAULTS, default=DEVICE_DEFAULTS_SCHEMA({})):
@@ -54,12 +43,12 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 
-def devices_from_config(domain_config, hass=None):
+def devices_from_config(domain_config):
     """Parse configuration and add Rflink cover devices."""
     devices = []
     for device_id, config in domain_config[CONF_DEVICES].items():
         device_config = dict(domain_config[CONF_DEVICE_DEFAULTS], **config)
-        device = RflinkCover(device_id, hass, **device_config)
+        device = RflinkCover(None, device_id, **device_config)
         devices.append(device)
 
     return devices
@@ -68,7 +57,7 @@ def devices_from_config(domain_config, hass=None):
 async def async_setup_platform(hass, config, async_add_entities,
                                discovery_info=None):
     """Set up the Rflink cover platform."""
-    async_add_entities(devices_from_config(config, hass))
+    async_add_entities(devices_from_config(config))
 
 
 class RflinkCover(RflinkCommand, CoverDevice):
@@ -83,6 +72,26 @@ class RflinkCover(RflinkCommand, CoverDevice):
             self._state = True
         elif command in ['off', 'alloff', 'down']:
             self._state = False
+
+    @property
+    def device_state_attributes(self):
+        """Return the device state attributes."""
+        attr = {}
+        super_attr = super().device_state_attributes
+        if super_attr is not None:
+            attr.update(super_attr)
+
+        if self._rts_my_position is not None:
+            attr[CONF_MY_POSITION] = self._rts_my_position
+        if self._travel_time_down is not None:
+            attr[CONF_TRAVELLING_TIME_DOWN] = self._travel_time_down
+        if self._travel_time_up is not None:
+            attr[CONF_TRAVELLING_TIME_UP] = self._travel_time_up
+        if self.tc is not None:
+            attr['travel_to_position'] = self.tc.travel_to_position
+            attr['tc_current_position'] = self.tc.current_position()
+        #     attr['position_type'] = self.travelcalculator.position_type
+        return attr
 
     @property
     def should_poll(self):
