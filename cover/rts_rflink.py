@@ -67,12 +67,9 @@ def devices_from_config(domain_config):
     """Parse configuration and add RFLink cover devices."""
     devices = []
     for device_id, config in domain_config[CONF_DEVICES].items():
-        rts_my_position = config.get(CONF_MY_POSITION)
-        del config[CONF_MY_POSITION]
-        travel_time_down = config.get(CONF_TRAVELLING_TIME_DOWN)
-        del config[CONF_TRAVELLING_TIME_DOWN]
-        travel_time_up = config.get(CONF_TRAVELLING_TIME_UP)
-        del config[CONF_TRAVELLING_TIME_UP]
+        rts_my_position = config.pop(CONF_MY_POSITION)
+        travel_time_down = config.pop(CONF_TRAVELLING_TIME_DOWN)
+        travel_time_up = config.pop(CONF_TRAVELLING_TIME_UP)
         device_config = dict(domain_config[CONF_DEVICE_DEFAULTS], **config)
         device = RTSRflinkCover(device_id, rts_my_position,
                                 travel_time_down, travel_time_up, **device_config)
