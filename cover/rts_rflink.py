@@ -22,11 +22,12 @@ from homeassistant.components.rflink import (
 
 from homeassistant.components.cover import (
     CoverDevice, PLATFORM_SCHEMA, SUPPORT_OPEN, SUPPORT_CLOSE,
-    SUPPORT_STOP, SUPPORT_SET_POSITION, ATTR_POSITION)
+    SUPPORT_STOP, SUPPORT_SET_POSITION, ATTR_POSITION, ATTR_CURRENT_POSITION)
 from homeassistant.helpers.event import async_track_utc_time_change
+from homeassistant.helpers.restore_state import async_get_last_state
 import homeassistant.helpers.config_validation as cv
 
-REQUIREMENTS = ['xknx==0.8.5']
+REQUIREMENTS = ['xknx==0.9.1']
 
 DEPENDENCIES = ['rflink']
 
@@ -71,8 +72,10 @@ def devices_from_config(domain_config):
         travel_time_down = config.pop(CONF_TRAVELLING_TIME_DOWN)
         travel_time_up = config.pop(CONF_TRAVELLING_TIME_UP)
         device_config = dict(domain_config[CONF_DEVICE_DEFAULTS], **config)
-        device = RTSRflinkCover(device_id, rts_my_position,
-                                travel_time_down, travel_time_up, **device_config)
+
+        device = RTSRflinkCover(
+                device_id, rts_my_position,
+                travel_time_down, travel_time_up, **device_config)
         devices.append(device)
     return devices
 
@@ -104,6 +107,19 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
         self.tc = TravelCalculator(
             self._travel_time_down,
             self._travel_time_up)
+
+    async def async_added_to_hass(self):
+        await super().async_added_to_hass()
+        """ Only cover's position matters.             """
+        """ The rest is calculated from this attribute."""
+        old_state = await async_get_last_state(self.hass, self.entity_id)
+        _LOGGER.debug('async_added_to_hass :: oldState %s', old_state)
+        if (
+                old_state is not None and
+                self.tc is not None and
+                old_state.attributes.get(ATTR_CURRENT_POSITION) is not None):
+            self.tc.set_position(int(
+                old_state.attributes.get(ATTR_CURRENT_POSITION)))
 
     def _handle_event(self, event):
         """Adjust state if RFLink picks up a remote command for this device."""
@@ -154,18 +170,6 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
             attr['tc_current_position'] = self.tc.current_position()
         #     attr['position_type'] = self.travelcalculator.position_type
         return attr
-
-    @property
-    def should_poll(self):
-        """No polling available in RFLink cover."""
-        return False
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        supported_features = SUPPORT_OPEN | SUPPORT_CLOSE | \
-            SUPPORT_SET_POSITION | SUPPORT_STOP
-        return supported_features
 
     @property
     def current_cover_position(self):
@@ -232,7 +236,8 @@ class RTSRflinkCover(RflinkCommand, CoverDevice):
         _LOGGER.debug('set_position')
         """Move cover to a designated position."""
         current_position = self.tc.current_position()
-        _LOGGER.debug('set_position :: current_position: %d, new_position: %d', current_position, position)
+        _LOGGER.debug('set_position :: current_position: %d, new_position: %d',
+                      current_position, position)
         command = None
         if position < current_position:
             command = SERVICE_CLOSE_COVER
