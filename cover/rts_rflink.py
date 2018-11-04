@@ -9,20 +9,17 @@ import logging
 import voluptuous as vol
 
 from homeassistant.core import callback
-from homeassistant.const import (CONF_NAME, ATTR_ENTITY_ID,
-    SERVICE_OPEN_COVER, SERVICE_CLOSE_COVER, SERVICE_SET_COVER_POSITION,
-    SERVICE_STOP_COVER,
-    STATE_OPEN, STATE_CLOSED, STATE_OPENING, STATE_CLOSING)
+from homeassistant.const import (CONF_NAME, SERVICE_OPEN_COVER,
+                                 SERVICE_CLOSE_COVER, SERVICE_STOP_COVER)
 
 from homeassistant.components.rflink import (
     CONF_ALIASES, CONF_GROUP_ALIASES, CONF_GROUP, CONF_NOGROUP_ALIASES,
-    CONF_DEVICE_DEFAULTS, CONF_DEVICES, CONF_AUTOMATIC_ADD, CONF_FIRE_EVENT,
+    CONF_DEVICE_DEFAULTS, CONF_DEVICES, CONF_FIRE_EVENT,
     CONF_SIGNAL_REPETITIONS, EVENT_KEY_COMMAND,
     DEVICE_DEFAULTS_SCHEMA, RflinkCommand)
 
 from homeassistant.components.cover import (
-    CoverDevice, PLATFORM_SCHEMA, SUPPORT_OPEN, SUPPORT_CLOSE,
-    SUPPORT_STOP, SUPPORT_SET_POSITION, ATTR_POSITION, ATTR_CURRENT_POSITION)
+    CoverDevice, PLATFORM_SCHEMA, ATTR_POSITION, ATTR_CURRENT_POSITION)
 from homeassistant.helpers.event import async_track_utc_time_change
 from homeassistant.helpers.restore_state import async_get_last_state
 import homeassistant.helpers.config_validation as cv
