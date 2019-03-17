@@ -8,6 +8,8 @@ import logging
 
 import voluptuous as vol
 
+from datetime import timedelta
+
 from homeassistant.core import callback
 from homeassistant.const import (CONF_NAME, SERVICE_OPEN_COVER,
                                  SERVICE_CLOSE_COVER, SERVICE_STOP_COVER)
@@ -34,6 +36,7 @@ CONF_MY_POSITION = 'rts_my_position'
 CONF_TRAVELLING_TIME_DOWN = 'travelling_time_down'
 CONF_TRAVELLING_TIME_UP = 'travelling_time_up'
 DEFAULT_TRAVEL_TIME = 25
+DEFAULT_AUTO_UPDATE_INTERVAL = timedelta(seconds=0.1)
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_DEVICE_DEFAULTS, default=DEVICE_DEFAULTS_SCHEMA({})):
@@ -251,8 +254,9 @@ class RTSRflinkCover(RflinkCommand, CoverDevice, RestoreEntity):
         _LOGGER.debug('start_auto_updater')
         if self._unsubscribe_auto_updater is None:
             _LOGGER.debug('init _unsubscribe_auto_updater')
-            self._unsubscribe_auto_updater = async_track_utc_time_change(
-                self.hass, self.auto_updater_hook)
+#            self._unsubscribe_auto_updater = async_track_utc_time_change(self.hass, self.auto_updater_hook)
+            self._unsubscribe_auto_updater = async_track_time_interval(
+                self.hass, self.auto_updater_hook, DEFAULT_AUTO_UPDATE_INTERVAL)
 
     @callback
     def auto_updater_hook(self, now):
