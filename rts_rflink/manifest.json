@@ -1,0 +1,11 @@
+{
+  "domain": "rts_rflink",
+  "name": "RFLink",
+  "documentation": "https://www.home-assistant.io/integrations/rflink",
+  "requirements": [
+    "rflink==0.0.51",
+    "xknx==0.9.4"
+  ],
+  "dependencies": [],
+  "codeowners": []
+}
