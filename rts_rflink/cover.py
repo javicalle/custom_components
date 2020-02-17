@@ -24,7 +24,7 @@ from homeassistant.const import (
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from custom_components.rflink import (
+from homeassistant.components.rflink import (
     CONF_ALIASES,
     CONF_DEVICE_DEFAULTS,
     CONF_DEVICES,
