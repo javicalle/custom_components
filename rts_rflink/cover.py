@@ -11,8 +11,8 @@ from homeassistant.helpers.event import async_track_utc_time_change, async_track
 from homeassistant.components.cover import (
     ATTR_CURRENT_POSITION,
     ATTR_POSITION,
-    PLATFORM_SCHEMA,
-    CoverDevice,
+    PLATFORM_SCHEMA as COVER_PLATFORM_SCHEMA,
+    CoverEntity,
 )
 from homeassistant.const import (
     CONF_NAME,
@@ -47,7 +47,7 @@ CONF_TRAVELLING_TIME_DOWN = 'travelling_time_down'
 CONF_TRAVELLING_TIME_UP = 'travelling_time_up'
 DEFAULT_TRAVEL_TIME = 25
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
+PLATFORM_SCHEMA = COVER_PLATFORM_SCHEMA.extend(
     {
         vol.Optional(
             CONF_DEVICE_DEFAULTS, default=DEVICE_DEFAULTS_SCHEMA({})
@@ -82,13 +82,13 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 def devices_from_config(domain_config):
     """Parse configuration and add RFLink cover devices."""
     devices = []
-    for device_id, config in domain_config[CONF_DEVICES].items():
+    for entity_id, config in domain_config[CONF_DEVICES].items():
         rts_my_position = config.pop(CONF_MY_POSITION)
         travel_time_down = config.pop(CONF_TRAVELLING_TIME_DOWN)
         travel_time_up = config.pop(CONF_TRAVELLING_TIME_UP)
         device_config = dict(domain_config[CONF_DEVICE_DEFAULTS], **config)
         device = RTSRflinkCover(
-            device_id, rts_my_position, travel_time_down,
+            entity_id, rts_my_position, travel_time_down,
             travel_time_up, **device_config)
         devices.append(device)
     return devices
@@ -100,10 +100,10 @@ async def async_setup_platform(hass, config, async_add_entities,
     async_add_entities(devices_from_config(config))
 
 
-class RTSRflinkCover(RflinkCommand, CoverDevice, RestoreEntity):
+class RTSRflinkCover(RflinkCommand, CoverEntity, RestoreEntity):
     """RFLink entity which can switch on/stop/off (eg: cover)."""
 
-    def __init__(self, device_id, rts_my_position,
+    def __init__(self, entity_id, rts_my_position,
                  travel_time_down, travel_time_up, **device_config):
         """Initialize the cover."""
         from xknx.devices import TravelCalculator
@@ -116,7 +116,7 @@ class RTSRflinkCover(RflinkCommand, CoverDevice, RestoreEntity):
 
         self._unsubscribe_auto_updater = None
 
-        super().__init__(device_id, None, **device_config)
+        super().__init__(entity_id, None, **device_config)
 
         self.tc = TravelCalculator(
             self._travel_time_down, self._travel_time_up)
@@ -271,7 +271,7 @@ class RTSRflinkCover(RflinkCommand, CoverDevice, RestoreEntity):
     def auto_updater_hook(self, now):
         """Call for the autoupdater."""
         _LOGGER.debug('auto_updater_hook')
-        self.async_schedule_update_ha_state()
+        self.async_write_ha_state()
         if self.position_reached():
             _LOGGER.debug('auto_updater_hook :: position_reached')
             self.stop_auto_updater()
