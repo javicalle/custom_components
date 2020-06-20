@@ -16,6 +16,7 @@ from homeassistant.components.cover import (
 )
 from homeassistant.const import (
     CONF_NAME,
+    CONF_TYPE,
     SERVICE_CLOSE_COVER,
     SERVICE_OPEN_COVER,
     SERVICE_STOP_COVER,
@@ -42,6 +43,9 @@ _LOGGER = logging.getLogger(__name__)
 
 PARALLEL_UPDATES = 0
 
+TYPE_STANDARD = "standard"
+TYPE_INVERTED = "inverted"
+
 CONF_MY_POSITION = 'rts_my_position'
 CONF_TRAVELLING_TIME_DOWN = 'travelling_time_down'
 CONF_TRAVELLING_TIME_UP = 'travelling_time_up'
@@ -56,6 +60,7 @@ PLATFORM_SCHEMA = COVER_PLATFORM_SCHEMA.extend(
             {
                 cv.string: {
                     vol.Optional(CONF_NAME): cv.string,
+                    vol.Optional(CONF_TYPE, default=TYPE_STANDARD): vol.Any(TYPE_STANDARD, TYPE_INVERTED),
                     vol.Optional(CONF_ALIASES, default=[]):
                         vol.All(cv.ensure_list, [cv.string]),
                     vol.Optional(CONF_GROUP_ALIASES, default=[]): vol.All(
@@ -79,15 +84,32 @@ PLATFORM_SCHEMA = COVER_PLATFORM_SCHEMA.extend(
 )
 
 
+def entity_class_for_type(entity_type):
+    """Translate entity type to entity class.
+    Async friendly.
+    """
+    entity_device_mapping = {
+        # default cover implementation
+        TYPE_STANDARD: RTSRflinkCover,
+        # cover with open/close commands inverted
+        # like KAKU/COCO ASUN-650
+        TYPE_INVERTED: InvertedRTSRflinkCover,
+    }
+
+    return entity_device_mapping.get(entity_type, RTSRflinkCover)
+
+
 def devices_from_config(domain_config):
     """Parse configuration and add RFLink cover devices."""
     devices = []
     for entity_id, config in domain_config[CONF_DEVICES].items():
+        entity_type = config.pop(CONF_TYPE)
+        entity_class = entity_class_for_type(entity_type)
         rts_my_position = config.pop(CONF_MY_POSITION)
         travel_time_down = config.pop(CONF_TRAVELLING_TIME_DOWN)
         travel_time_up = config.pop(CONF_TRAVELLING_TIME_UP)
         device_config = dict(domain_config[CONF_DEVICE_DEFAULTS], **config)
-        device = RTSRflinkCover(
+        device = entity_class(
             entity_id, rts_my_position, travel_time_down,
             travel_time_up, **device_config)
         devices.append(device)
@@ -302,3 +324,13 @@ class RTSRflinkCover(RflinkCommand, CoverEntity, RestoreEntity):
                 _LOGGER.debug('auto_stop_if_necessary :: calling stop command')
                 await self._async_handle_command(SERVICE_STOP_COVER)
             self.tc.stop()
+
+
+class InvertedRTSRflinkCover(RTSRflinkCover):
+    """Rflink cover that has inverted open/close commands."""
+
+    async def _async_send_command(self, cmd, repetitions):
+        """Will invert only the UP/DOWN commands."""
+        _LOGGER.debug("Getting command: %s for Rflink device: %s", cmd, self._device_id)
+        cmd_inv = {"UP": "DOWN", "DOWN": "UP"}
+        await super()._async_send_command(cmd_inv.get(cmd, cmd), repetitions)
