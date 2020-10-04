@@ -3,8 +3,8 @@
   "name": "RFLink",
   "documentation": "https://www.home-assistant.io/integrations/rflink",
   "requirements": [
-    "rflink==0.0.52",
-    "xknx==0.9.4"
+    "rflink==0.0.54",
+    "xknx==0.13.0"
   ],
   "codeowners": []
 }
