@@ -6,5 +6,6 @@
     "rflink==0.0.54",
     "xknx==0.13.0"
   ],
+  "dependencies": ["rflink"],
   "codeowners": []
 }
