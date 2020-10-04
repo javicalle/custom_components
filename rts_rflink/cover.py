@@ -153,8 +153,8 @@ class RTSRflinkCover(RflinkCommand, CoverEntity, RestoreEntity):
                 old_state is not None and
                 self.tc is not None and
                 old_state.attributes.get(ATTR_CURRENT_POSITION) is not None):
-            self.tc.set_position(int(
-                old_state.attributes.get(ATTR_CURRENT_POSITION)))
+            self.tc.set_position(self.shift_position(int(
+                old_state.attributes.get(ATTR_CURRENT_POSITION))))
 
     def _handle_event(self, event):
         """Adjust state if RFLink picks up a remote command for this device."""
@@ -184,7 +184,7 @@ class RTSRflinkCover(RflinkCommand, CoverEntity, RestoreEntity):
             self.stop_auto_updater()
         elif self._rts_my_position is not None:
             _LOGGER.debug('_handle_my_button :: button sends to MY')
-            self.tc.start_travel(self._rts_my_position)
+            self.tc.start_travel(self.shift_position(self._rts_my_position))
             self.start_auto_updater()
 
     @property
@@ -205,21 +205,17 @@ class RTSRflinkCover(RflinkCommand, CoverEntity, RestoreEntity):
     @property
     def current_cover_position(self):
         """Return the current position of the cover."""
-        return self.tc.current_position()
+        return self.shift_position(self.tc.current_position())
 
     @property
     def is_opening(self):
         """Return if the cover is opening or not."""
-        from xknx.devices import TravelStatus
-        return self.tc.is_traveling() and \
-               self.tc.travel_direction == TravelStatus.DIRECTION_UP
+        return self.tc.is_opening()
 
     @property
     def is_closing(self):
         """Return if the cover is closing or not."""
-        from xknx.devices import TravelStatus
-        return self.tc.is_traveling() and \
-               self.tc.travel_direction == TravelStatus.DIRECTION_DOWN
+        return self.tc.is_closing()
 
     @property
     def is_closed(self):
@@ -263,7 +259,7 @@ class RTSRflinkCover(RflinkCommand, CoverEntity, RestoreEntity):
     async def set_position(self, position):
         _LOGGER.debug('set_position')
         """Move cover to a designated position."""
-        current_position = self.tc.current_position()
+        current_position = self.shift_position(self.tc.current_position())
         _LOGGER.debug('set_position :: current_position: %d, new_position: %d',
                       current_position, position)
         command = None
@@ -274,7 +270,7 @@ class RTSRflinkCover(RflinkCommand, CoverEntity, RestoreEntity):
         if command is not None:
             self._require_stop_cover = True
             self.start_auto_updater()
-            self.tc.start_travel(position)
+            self.tc.start_travel(self.shift_position(position))
             _LOGGER.debug('set_position :: command %s', command)
             await self._async_handle_command(command)
         return
@@ -325,6 +321,12 @@ class RTSRflinkCover(RflinkCommand, CoverEntity, RestoreEntity):
                 await self._async_handle_command(SERVICE_STOP_COVER)
             self.tc.stop()
 
+    def shift_position(self, position):
+        """Calculate 100 complement position"""
+        try:
+            return 100 - position
+        except TypeError:
+            return None
 
 class InvertedRTSRflinkCover(RTSRflinkCover):
     """Rflink cover that has inverted open/close commands."""
