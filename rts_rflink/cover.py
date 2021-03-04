@@ -15,6 +15,7 @@ from homeassistant.components.cover import (
     CoverEntity,
 )
 from homeassistant.const import (
+    CONF_DEVICES,
     CONF_NAME,
     CONF_TYPE,
     SERVICE_CLOSE_COVER,
@@ -28,7 +29,6 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.components.rflink import (
     CONF_ALIASES,
     CONF_DEVICE_DEFAULTS,
-    CONF_DEVICES,
     CONF_FIRE_EVENT,
     CONF_GROUP,
     CONF_GROUP_ALIASES,
