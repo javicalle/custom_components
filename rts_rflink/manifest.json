@@ -9,5 +9,6 @@
   "codeowners": [
     "@javicalle"
   ],
-  "version": "0.5.0"
+  "version": "0.5.0",
+  "iot_class": "assumed_state"
 }
