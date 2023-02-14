@@ -1,0 +1,9 @@
+The 'travelcalculator' module comes from https://github.com/XKNX/xknx/blob/main/xknx/devices/travelcalculator.py and 
+all the credit and my gratitude are for the developers of the xknx integration:
+* https://github.com/XKNX/xknx
+
+The module has been adopted in my repository with their approval:
+* https://community.home-assistant.io/t/yet-another-time-controlled-cover-rflink/72759/111
+
+This module is subject to their license of use:
+* https://github.com/XKNX/xknx/blob/main/LICENSE

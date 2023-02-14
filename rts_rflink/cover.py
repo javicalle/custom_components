@@ -39,6 +39,8 @@ from homeassistant.components.rflink import (
     RflinkCommand,
 )
 
+from .travelcalculator import TravelCalculator
+
 _LOGGER = logging.getLogger(__name__)
 
 PARALLEL_UPDATES = 0
@@ -128,7 +130,6 @@ class RTSRflinkCover(RflinkCommand, CoverEntity, RestoreEntity):
     def __init__(self, entity_id, rts_my_position,
                  travel_time_down, travel_time_up, **device_config):
         """Initialize the cover."""
-        from xknx.devices import TravelCalculator
         self._rts_my_position = rts_my_position
         self._travel_time_down = travel_time_down
         self._travel_time_up = travel_time_up
