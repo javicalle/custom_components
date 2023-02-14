@@ -3,10 +3,10 @@
   "name": "RFLink",
   "documentation": "https://www.home-assistant.io/integrations/rflink",
   "issue_tracker": "https://github.com/javicalle/custom_components/issues",
-  "dependencies": ["rflink","xknx"],
+  "dependencies": ["rflink"],
   "codeowners": [
     "@javicalle"
   ],
-  "version": "0.5.1",
+  "version": "1.0.0",
   "iot_class": "assumed_state"
 }
